@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pxsol-baht · 泰铢币</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+    background: #0d1117; color: #e6edf3; margin: 0; padding: 24px;
+    min-height: 100vh; display: flex; justify-content: center;
+  }
+  .wrap { max-width: 760px; width: 100%; }
+  h1 { color: #58a6ff; font-size: 22px; margin: 0 0 4px; }
+  .sub { color: #8b949e; font-size: 12px; margin-bottom: 24px; word-break: break-all; }
+
+  .card {
+    background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+    padding: 18px 20px; margin-bottom: 16px;
+  }
+  .card h2 { color: #7ee787; font-size: 14px; margin: 0 0 12px; font-weight: 600; }
+
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 8px 0; font-size: 13px; }
+  .row .label { color: #8b949e; flex-shrink: 0; }
+  .row .val { font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; word-break: break-all; text-align: right; }
+  .val.green  { color: #3fb950; }
+  .val.yellow { color: #d29922; }
+  .val.red    { color: #f85149; }
+
+  .balance-box {
+    background: #0d1117; border: 1px solid #30363d; border-radius: 8px;
+    padding: 24px; margin: 12px 0; text-align: center; position: relative; overflow: hidden;
+  }
+  .balance-box::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, #58a6ff, #7ee787, #d29922);
+  }
+  .balance-amount {
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 32px; color: #e6edf3; font-weight: 700;
+  }
+  .balance-unit { color: #8b949e; font-size: 13px; margin-left: 6px; }
+  .balance-meta { color: #8b949e; font-size: 11px; margin-top: 8px; font-family: monospace; }
+
+  input, textarea {
+    width: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+    color: #e6edf3; padding: 10px; font-family: monospace; font-size: 13px;
+    outline: none; margin-top: 6px;
+  }
+  input:focus, textarea:focus { border-color: #58a6ff; }
+  input::placeholder { color: #484f58; }
+
+  button {
+    background: #238636; color: #fff; border: none; border-radius: 6px;
+    padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: background .15s;
+  }
+  button:hover { background: #2ea043; }
+  button:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+  button.secondary { background: #21262d; color: #e6edf3; }
+  button.secondary:hover { background: #30363d; }
+  button.blue { background: #1f6feb; }
+  button.blue:hover { background: #388bfd; }
+
+  .actions { display: flex; gap: 10px; margin-top: 12px; }
+
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .pill.connected    { background: rgba(63,185,80,.15);  color: #3fb950; }
+  .pill.disconnected { background: rgba(248,81,73,.15);  color: #f85149; }
+  .pill.minter       { background: rgba(210,153,34,.15); color: #d29922; }
+
+  .history { margin-top: 8px; }
+  .history-item {
+    padding: 10px 12px; border-left: 3px solid #30363d;
+    margin: 8px 0; background: #0d1117; border-radius: 0 6px 6px 0;
+  }
+  .history-item.mint     { border-left-color: #3fb950; }
+  .history-item.transfer { border-left-color: #58a6ff; }
+  .history-item.error    { border-left-color: #f85149; }
+  .history-item .hi-head {
+    display: flex; justify-content: space-between; font-size: 11px;
+    color: #8b949e; margin-bottom: 4px;
+  }
+  .history-item .hi-tag { font-weight: 600; }
+  .history-item.mint     .hi-tag { color: #3fb950; }
+  .history-item.transfer .hi-tag { color: #58a6ff; }
+  .history-item.error    .hi-tag { color: #f85149; }
+  .history-item .hi-body {
+    font-family: monospace; font-size: 12px; color: #e6edf3;
+    word-break: break-all; white-space: pre-wrap;
+  }
+  .history-item .hi-sig {
+    font-family: monospace; font-size: 10.5px; color: #8b949e;
+    word-break: break-all; margin-top: 4px;
+  }
+
+  #log {
+    background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+    padding: 12px; font-family: monospace; font-size: 11.5px;
+    max-height: 180px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+    color: #8b949e; margin-top: 12px;
+  }
+  #log .ok   { color: #3fb950; }
+  #log .err  { color: #f85149; }
+  #log .info { color: #58a6ff; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
+  .field label { display: block; color: #8b949e; font-size: 11.5px; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>pxsol-baht · 泰铢币</h1>
+  <div class="sub">Program: <span id="programId">—</span></div>
+
+  <!-- 钱包 -->
+  <div class="card">
+    <h2>钱包</h2>
+    <div class="row">
+      <span class="label">状态</span>
+      <span id="walletStatus" class="pill disconnected">未连接</span>
+    </div>
+    <div class="row">
+      <span class="label">地址</span>
+      <span id="walletAddr" class="val">—</span>
+    </div>
+    <div class="row">
+      <span class="label">角色</span>
+      <span id="walletRole" class="val">—</span>
+    </div>
+    <div class="row">
+      <span class="label">PDA</span>
+      <span id="pdaAddr" class="val">—</span>
+    </div>
+    <div class="actions">
+      <button id="btnConnect">连接 Phantom</button>
+    </div>
+  </div>
+
+  <!-- 余额 -->
+  <div class="card">
+    <h2>我的余额</h2>
+    <div class="balance-box">
+      <span id="balanceAmount" class="balance-amount">—</span>
+      <span class="balance-unit">BAHT</span>
+      <div id="balanceMeta" class="balance-meta">未连接</div>
+    </div>
+    <div class="actions">
+      <button id="btnRefresh" class="secondary">刷新余额</button>
+    </div>
+  </div>
+
+  <!-- 铸造 -->
+  <div class="card">
+    <h2>铸造（仅 Minter 可调用）</h2>
+    <div class="form-grid">
+      <div class="field">
+        <label>金额（整数 BAHT）</label>
+        <input id="mintAmount" type="text" placeholder="例如 100" value="100">
+      </div>
+    </div>
+    <div class="actions">
+      <button id="btnMint" disabled>铸造到我的 PDA</button>
+    </div>
+  </div>
+
+  <!-- 转账 -->
+  <div class="card">
+    <h2>转账</h2>
+    <div class="form-grid">
+      <div class="field">
+        <label>接收者钱包地址（base58）</label>
+        <input id="transferTo" type="text" placeholder="接收者钱包公钥">
+      </div>
+      <div class="field">
+        <label>金额（整数 BAHT）</label>
+        <input id="transferAmount" type="text" placeholder="例如 25" value="25">
+      </div>
+    </div>
+    <div class="actions">
+      <button id="btnTransfer" class="blue" disabled>转账</button>
+    </div>
+  </div>
+
+  <!-- 日志 -->
+  <div class="card">
+    <h2>日志</h2>
+    <div id="log"></div>
+  </div>
+
+  <!-- 历史 -->
+  <div class="card">
+    <h2>本次会话的操作历史</h2>
+    <div id="history" class="history">
+      <div style="color:#484f58; font-size:12px; padding:8px 0;">还没有操作记录</div>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+import {
+  Connection, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY,
+  Transaction, TransactionInstruction,
+} from "https://esm.sh/@solana/web3.js@1.95.3";
+
+// ============================================================
+// 配置：部署后把这两个常量换成你自己的
+// ============================================================
+const PROGRAM_ID     = new PublicKey("4C4tdiGW8HK9jnKQDEDtqh6xuKdtPpzE5yFNREi4tNiZ"); // ← 换成 deploy.sh 输出的 Program ID
+const MINTER_ADDRESS = "MinterWalletAddressHere11111111111111111111111";             // ← 换成你部署时用的 minter 地址
+
+// devnet
+const RPC = "https://api.devnet.solana.com";
+const connection = new Connection(RPC, "confirmed");
+
+// 指令 opcode，必须与合约常量一致
+const OP_MINT     = 0x00;
+const OP_TRANSFER = 0x01;
+
+const BALANCE_SIZE = 8;
+
+// ============================================================
+// 全局状态
+// ============================================================
+let provider = null;
+let userKey  = null;
+let userPda  = null;
+let balance  = 0n;
+
+const $ = id => document.getElementById(id);
+$("programId").textContent = PROGRAM_ID.toBase58();
+
+// ============================================================
+// 工具
+// ============================================================
+function log(msg, cls = "") {
+  const el = document.createElement("div");
+  if (cls) el.className = cls;
+  el.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  $("log").appendChild(el);
+  $("log").scrollTop = $("log").scrollHeight;
+}
+
+function getProvider() {
+  if ("phantom" in window) {
+    const p = window.phantom?.solana;
+    if (p?.isPhantom) return p;
+  }
+  return null;
+}
+
+/** 把 u64 金额编码进 9 字节指令数据：[opcode, amount_be_u64] */
+function encodeInstruction(opcode, amountBigInt) {
+  const data = new Uint8Array(9);
+  data[0] = opcode;
+  const view = new DataView(data.buffer);
+  view.setBigUint64(1, amountBigInt, false); // false = big-endian
+  return data;
+}
+
+/** 从账户 data 前 8 字节读 u64 大端余额 */
+function decodeBalance(data) {
+  if (!data || data.length < BALANCE_SIZE) return 0n;
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  return view.getBigUint64(0, false);
+}
+
+/** 把 base58 钱包地址派生成 PDA */
+function derivePda(walletPubkey) {
+  const [pda] = PublicKey.findProgramAddressSync(
+    [walletPubkey.toBuffer()],
+    PROGRAM_ID
+  );
+  return pda;
+}
+
+/** 解析用户输入的正整数金额 */
+function parseAmount(inputId) {
+  const raw = $(inputId).value.trim();
+  if (!raw) throw new Error("金额不能为空");
+  if (!/^\d+$/.test(raw)) throw new Error("金额必须是整数");
+  const n = BigInt(raw);
+  if (n <= 0n) throw new Error("金额必须大于 0");
+  if (n > 0xFFFFFFFFFFFFFFFFn) throw new Error("金额超出 u64 范围");
+  return n;
+}
+
+// ============================================================
+// 钱包连接
+// ============================================================
+async function connect() {
+  provider = getProvider();
+  if (!provider) {
+    log("未检测到 Phantom，请安装 https://phantom.app", "err");
+    return;
+  }
+
+  try {
+    const resp = await provider.connect();
+    userKey = resp.publicKey;
+    userPda = derivePda(userKey);
+
+    $("walletAddr").textContent = userKey.toBase58();
+    $("pdaAddr").textContent    = userPda.toBase58();
+    $("walletStatus").textContent = "已连接";
+    $("walletStatus").className   = "pill connected";
+    $("btnConnect").textContent   = "重新连接";
+
+    const isMinter = userKey.toBase58() === MINTER_ADDRESS;
+    const roleEl = $("walletRole");
+    if (isMinter) {
+      roleEl.textContent = "Minter（可铸造）";
+      roleEl.className   = "val yellow";
+    } else {
+      roleEl.textContent = "普通用户";
+      roleEl.className   = "val";
+    }
+
+    $("btnMint").disabled     = !isMinter;
+    $("btnTransfer").disabled = false;
+
+    log("钱包已连接: " + userKey.toBase58(), "ok");
+    log("PDA: " + userPda.toBase58(), "info");
+
+    await refreshBalance();
+  } catch (e) {
+    log("连接失败: " + (e.message || e), "err");
+  }
+}
+
+// ============================================================
+// 读余额
+// ============================================================
+async function refreshBalance() {
+  if (!userPda) return;
+  try {
+    const acc = await connection.getAccountInfo(userPda);
+    if (!acc) {
+      balance = 0n;
+      $("balanceAmount").textContent = "0";
+      $("balanceMeta").textContent   = "PDA 未初始化（第一次铸造/收款时自动创建）";
+      return;
+    }
+    balance = decodeBalance(acc.data);
+    $("balanceAmount").textContent = balance.toString();
+    $("balanceMeta").textContent =
+      `${acc.data.length} 字节 · ${acc.lamports} lamports`;
+  } catch (e) {
+    log("读取余额失败: " + (e.message || e), "err");
+  }
+}
+
+// ============================================================
+// 铸造
+// ============================================================
+async function mint() {
+  if (!provider || !userKey || !userPda) return;
+
+  let amount;
+  try {
+    amount = parseAmount("mintAmount");
+  } catch (e) {
+    log("参数错误: " + e.message, "err");
+    return;
+  }
+
+  try {
+    $("btnMint").disabled = true;
+
+    const ix = new TransactionInstruction({
+      programId: PROGRAM_ID,
+      keys: [
+        { pubkey: userKey,                 isSigner: true,  isWritable: true  }, // [0] minter wallet
+        { pubkey: userPda,                 isSigner: false, isWritable: true  }, // [1] minter PDA
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // [2]
+        { pubkey: SYSVAR_RENT_PUBKEY,      isSigner: false, isWritable: false }, // [3]
+      ],
+      data: encodeInstruction(OP_MINT, amount),
+    });
+
+    const sig = await sendAndConfirm(ix);
+    log("铸造成功: " + sig, "ok");
+    addHistory("mint", `铸造 ${amount} BAHT`, sig);
+    await refreshBalance();
+  } catch (e) {
+    log("铸造失败: " + (e.message || e), "err");
+    addHistory("error", `铸造 ${amount} BAHT 失败: ${e.message || e}`, null);
+  } finally {
+    $("btnMint").disabled = userKey?.toBase58() !== MINTER_ADDRESS;
+  }
+}
+
+// ============================================================
+// 转账
+// ============================================================
+async function transfer() {
+  if (!provider || !userKey || !userPda) return;
+
+  let amount, receiverKey, receiverPda;
+  try {
+    amount = parseAmount("transferAmount");
+    const receiverStr = $("transferTo").value.trim();
+    if (!receiverStr) throw new Error("请填写接收者地址");
+    receiverKey = new PublicKey(receiverStr);
+    receiverPda = derivePda(receiverKey);
+  } catch (e) {
+    log("参数错误: " + e.message, "err");
+    return;
+  }
+
+  if (receiverKey.equals(userKey)) {
+    log("不能转给自己", "err");
+    return;
+  }
+  if (amount > balance) {
+    log(`余额不足：当前 ${balance} BAHT，需要 ${amount} BAHT`, "err");
+    return;
+  }
+
+  try {
+    $("btnTransfer").disabled = true;
+
+    const ix = new TransactionInstruction({
+      programId: PROGRAM_ID,
+      keys: [
+        { pubkey: userKey,                 isSigner: true,  isWritable: true  }, // [0] sender wallet
+        { pubkey: userPda,                 isSigner: false, isWritable: true  }, // [1] sender PDA
+        { pubkey: receiverKey,             isSigner: false, isWritable: false }, // [2] receiver wallet
+        { pubkey: receiverPda,             isSigner: false, isWritable: true  }, // [3] receiver PDA
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // [4]
+        { pubkey: SYSVAR_RENT_PUBKEY,      isSigner: false, isWritable: false }, // [5]
+      ],
+      data: encodeInstruction(OP_TRANSFER, amount),
+    });
+
+    const sig = await sendAndConfirm(ix);
+    log("转账成功: " + sig, "ok");
+    addHistory(
+      "transfer",
+      `转账 ${amount} BAHT → ${receiverKey.toBase58().slice(0, 8)}…${receiverKey.toBase58().slice(-4)}`,
+      sig
+    );
+    await refreshBalance();
+  } catch (e) {
+    log("转账失败: " + (e.message || e), "err");
+    addHistory("error", `转账 ${amount} BAHT 失败: ${e.message || e}`, null);
+  } finally {
+    $("btnTransfer").disabled = false;
+  }
+}
+
+// ============================================================
+// 签名 → 发送 → 确认（两个操作共用）
+// ============================================================
+async function sendAndConfirm(ix) {
+  const tx = new Transaction().add(ix);
+  tx.feePayer = userKey;
+  tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+
+  log("等待 Phantom 签名…", "info");
+  const signed = await provider.signTransaction(tx);
+
+  log("发送交易…", "info");
+  const sig = await connection.sendRawTransaction(signed.serialize());
+  await connection.confirmTransaction(sig, "confirmed");
+  return sig;
+}
+
+// ============================================================
+// 历史记录
+// ============================================================
+function addHistory(kind, text, sig) {
+  const box = $("history");
+  const placeholder = box.querySelector("div[style]");
+  if (placeholder && placeholder.textContent.includes("还没有操作记录")) {
+    placeholder.remove();
+  }
+
+  const item = document.createElement("div");
+  item.className = "history-item " + kind;
+
+  const head = document.createElement("div");
+  head.className = "hi-head";
+  const left  = document.createElement("span");
+  left.className = "hi-tag";
+  left.textContent = kind === "mint" ? "铸造" : kind === "transfer" ? "转账" : "失败";
+  const right = document.createElement("span");
+  right.textContent = new Date().toLocaleTimeString();
+  head.appendChild(left);
+  head.appendChild(right);
+
+  const body = document.createElement("div");
+  body.className = "hi-body";
+  body.textContent = text;
+
+  item.appendChild(head);
+  item.appendChild(body);
+
+  if (sig) {
+    const sigEl = document.createElement("div");
+    sigEl.className = "hi-sig";
+    sigEl.textContent = sig;
+    item.appendChild(sigEl);
+  }
+
+  box.insertBefore(item, box.firstChild);
+}
+
+// ============================================================
+// 绑定
+// ============================================================
+$("btnConnect").addEventListener("click", connect);
+$("btnRefresh").addEventListener("click", refreshBalance);
+$("btnMint").addEventListener("click", mint);
+$("btnTransfer").addEventListener("click", transfer);
+
+window.addEventListener("load", async () => {
+  const p = getProvider();
+  if (p && p.isConnected) {
+    await connect();
+  }
+});
+</script>
+</body>
+</html>
