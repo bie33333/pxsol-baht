@@ -27,7 +27,7 @@ const BALANCE_SIZE: usize = 8;
 /// 2. 用 bs58 解码为 32 字节
 /// 3. 替换下方数组
 /// 4. 或者直接用 deploy.sh 的 MINTER_ADDRESS 参数自动替换
-const MINTER_PUBKEY: [u8; 32] = [0u8; 32];
+const MINTER_PUBKEY: [u8; 32] = [98, 112, 187, 183, 201, 37, 134, 16, 50, 72, 196, 14, 231, 112, 53, 104, 39, 107, 112, 41, 121, 111, 145, 97, 129, 251, 33, 106, 37, 185, 102, 180];
 
 /// 指令 opcode
 const OP_MINT: u8 = 0x00;
